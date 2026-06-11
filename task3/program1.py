@@ -1,5 +1,6 @@
 """
-Завдання №3 — Програма 1 (дочірня)
+Завдання №3 - Програма 1 (дочірня).
+Працює як окремий скрипт: запускається через subprocess/execvpe.
 
 Отримує через аргументи командного рядка два дійсних числа a та b
 (0 < a < b < 1).
@@ -19,7 +20,7 @@ def main() -> None:
             f"Використання: {sys.argv[0]} <a> <b>",
             file=sys.stderr,
         )
-        os._exit(1)
+        sys.exit(1)
 
     try:
         a = float(sys.argv[1])
@@ -29,11 +30,11 @@ def main() -> None:
             "Помилка: a та b мають бути дійсними числами.",
             file=sys.stderr,
         )
-        os._exit(1)
+        sys.exit(1)
 
     if not (0 < a < b < 1):
         print("Помилка: необхідно 0 < a < b < 1.", file=sys.stderr)
-        os._exit(1)
+        sys.exit(1)
 
     num_str = os.environ.get("NUM", "500")
     try:
@@ -45,13 +46,13 @@ def main() -> None:
             f"Помилка: NUM={num_str!r} не є натуральним числом.",
             file=sys.stderr,
         )
-        os._exit(1)
+        sys.exit(1)
 
     random.seed(os.getpid())
     count = sum(1 for _ in range(num) if a <= random.random() <= b)
 
-    exit_code = min(count, 255)
-    os._exit(exit_code)
+    # Код повернення обмежений 255 (POSIX-обмеження на exit code)
+    sys.exit(min(count, 255))
 
 
 if __name__ == "__main__":
