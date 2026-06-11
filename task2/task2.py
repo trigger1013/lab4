@@ -2,6 +2,9 @@
 Завдання №2
 Створення заданої кількості процесів-нащадків.
 
+УВАГА: fork() доступний лише на POSIX (Linux/macOS).
+На Windows скрипт виведе відповідне повідомлення і завершиться.
+
 Кожен дочірній процес генерує псевдовипадкове число в діапазоні 0..1:
   - якщо число >= 0.5 → процес завершується нормально (код 0)
   - якщо число  < 0.5 → процес виконує нескінченний цикл
@@ -24,6 +27,17 @@ from my_system import my_system
 DEFAULT_COUNT = 10
 
 
+def check_posix() -> None:
+    """Перевіряє, що скрипт запущено на POSIX-системі."""
+    if os.name == "nt":
+        print(
+            "Помилка: завдання №2 використовує os.fork() і "
+            "підтримується лише на Linux/macOS.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 def report_exit(pid: int, status: int) -> None:
     """Виводить причину завершення процесу з PID pid."""
     if os.WIFEXITED(status):
@@ -40,6 +54,8 @@ def report_exit(pid: int, status: int) -> None:
 
 
 def main() -> None:
+    check_posix()
+
     count = DEFAULT_COUNT
     if len(sys.argv) > 1:
         try:
@@ -54,8 +70,9 @@ def main() -> None:
             )
             sys.exit(1)
 
-    print(f"\n=== Стан процесів ДО запуску (ps aux | grep {os.getpid()}) ===")
-    my_system(f"ps aux | grep -E 'PID|{os.getpid()}' | grep -v grep")
+    ppid = os.getpid()
+    print(f"\n=== Стан процесів ДО запуску (grep {ppid}) ===")
+    my_system(f"ps aux | grep -E 'PID|{ppid}' | grep -v grep")
 
     print(f"\nСтворюємо {count} дочірніх процесів...\n")
 
@@ -73,7 +90,8 @@ def main() -> None:
             random.seed(os.getpid())
             value = random.random()
             print(
-                f"  Дочірній PID {os.getpid()} [#{i}]: value={value:.4f}",
+                f"  Дочірній PID {os.getpid()} [#{i}]:"
+                f" value={value:.4f}",
                 flush=True,
             )
 
@@ -97,7 +115,7 @@ def main() -> None:
             child_pids.append(pid)
 
     # -- крок 1: засипаємо на 3 секунди --
-    print(f"\nБатьківський процес (PID {os.getpid()}) засинає на 3 с...")
+    print(f"\nБатьківський процес (PID {ppid}) засинає на 3 с...")
     time.sleep(3)
 
     # -- крок 2: збираємо завершені процеси (WNOHANG) --
@@ -116,10 +134,10 @@ def main() -> None:
         print(f"\n--- Процеси, що ще працюють ({len(still_running)} шт.) ---")
         for pid in still_running:
             print(f"  PID {pid}")
+        pids_pattern = "|".join(str(p) for p in still_running)
         my_system(
-            "ps aux | head -1 && ps aux | grep -E '"
-            + "|".join(str(p) for p in still_running)
-            + "' | grep -v grep"
+            f"ps aux | head -1 && "
+            f"ps aux | grep -E '{pids_pattern}' | grep -v grep"
         )
     else:
         print("\nВсі дочірні процеси вже завершились.")
@@ -138,7 +156,6 @@ def main() -> None:
             except ProcessLookupError:
                 print(f"  PID {pid} вже не існує")
 
-        # Даємо трохи часу завершитись
         time.sleep(0.5)
 
         print("\n--- Остаточно прибираємо з пам'яті ---")
@@ -149,10 +166,7 @@ def main() -> None:
             except ChildProcessError:
                 print(f"  PID {pid}: вже зібрано або не існує")
 
-    ppid = os.getpid()
-    print(
-        f"\n=== Стан процесів ПІСЛЯ завершення (ps aux | grep {ppid}) ==="
-    )
+    print(f"\n=== Стан процесів ПІСЛЯ завершення (grep {ppid}) ===")
     my_system(f"ps aux | grep -E 'PID|{ppid}' | grep -v grep")
 
     print("\nГотово.")

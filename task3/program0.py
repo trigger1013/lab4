@@ -1,13 +1,11 @@
 """
 Завдання №3 — Програма 0 (батьківська)
 
+УВАГА: використовує os.fork() — лише POSIX (Linux/macOS).
+
 Приймає два параметри командного рядка:
   n   — кількість рівних частин, на які розбивається інтервал [0, 1]
   num — кількість випробувань для кожного дочірнього процесу (NUM)
-
-Розбиває [0, 1] на n відрізків [a_i, b_i], встановлює NUM=num,
-запускає n дочірніх процесів (кожен виконує program1.py з своїм [a_i, b_i]),
-очікує завершення всіх і виводить отримані від них результати.
 """
 import os
 import sys
@@ -16,7 +14,20 @@ import sys
 PROGRAM1 = os.path.join(os.path.dirname(__file__), "program1.py")
 
 
+def check_posix() -> None:
+    """Перевіряє, що скрипт запущено на POSIX-системі."""
+    if os.name == "nt":
+        print(
+            "Помилка: програма використовує os.fork() і "
+            "підтримується лише на Linux/macOS.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 def main() -> None:
+    check_posix()
+
     if len(sys.argv) != 3:
         print(f"Використання: {sys.argv[0]} <n> <num>", file=sys.stderr)
         sys.exit(1)
@@ -33,14 +44,12 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # Розбиваємо [0, 1] на n рівних частин
     step = 1.0 / n
     intervals = [
         (round(i * step, 10), round((i + 1) * step, 10))
         for i in range(n)
     ]
 
-    # Встановлюємо змінну оточення NUM для дочірніх процесів
     env = os.environ.copy()
     env["NUM"] = str(num)
 
@@ -52,11 +61,13 @@ def main() -> None:
         pid = os.fork()
 
         if pid < 0:
-            print(f"fork() failed для інтервалу [{a}, {b}]", file=sys.stderr)
+            print(
+                f"fork() failed для інтервалу [{a}, {b}]",
+                file=sys.stderr,
+            )
             continue
 
         if pid == 0:
-            # Дочірній процес: запускаємо program1.py через execvpe
             try:
                 os.execvpe(
                     sys.executable,
@@ -69,7 +80,6 @@ def main() -> None:
         else:
             child_pids.append((pid, a, b))
 
-    # Очікуємо завершення всіх дочірніх процесів
     header = (
         f"{'PID':>8}  {'Інтервал':^22}  "
         f"{'Кількість':>10}  {'Теоретично':>12}"
@@ -97,7 +107,6 @@ def main() -> None:
                 f"  завершено сигналом {sig}"
             )
 
-    # Підсумок
     total = sum(c for _, _, c in results)
     print("-" * 60)
     print(f"{'Сума':>33}  {total:>10}  {num:>12}")

@@ -1,7 +1,8 @@
 """
 Завдання №1
 Реалізація функції my_system() — спрощеного аналога system()
-з використанням fork(), exec(), wait().
+з використанням fork(), exec(), wait() на Linux/macOS
+та subprocess на Windows.
 """
 import os
 import sys
@@ -11,16 +12,22 @@ def my_system(command: str) -> int:
     """
     Запускає команду оболонки у дочірньому процесі.
 
-    Створює дочірній процес через fork(), виконує команду через
-    execvp() (передаючи її оболонці /bin/sh -c), та очікує
-    на завершення дочірнього процесу через waitpid().
+    На POSIX (Linux/macOS): fork() + execvp() + waitpid().
+    На Windows: subprocess.run() як сумісний замінник.
 
     Args:
         command: рядок з командою оболонки.
 
     Returns:
-        Код завершення дочірнього процесу, або -1 у разі помилки fork().
+        Код завершення дочірнього процесу, або -1 у разі помилки.
     """
+    if os.name == "nt":
+        # Windows: os.fork() недоступний — використовуємо subprocess
+        import subprocess
+        result = subprocess.run(command, shell=True)
+        return result.returncode
+
+    # POSIX (Linux / macOS)
     pid = os.fork()
 
     if pid < 0:
@@ -42,7 +49,8 @@ def my_system(command: str) -> int:
             return os.WEXITSTATUS(status)
         elif os.WIFSIGNALED(status):
             print(
-                f"my_system: child killed by signal {os.WTERMSIG(status)}",
+                f"my_system: child killed by signal"
+                f" {os.WTERMSIG(status)}",
                 file=sys.stderr,
             )
             return -1
@@ -53,13 +61,22 @@ def my_system(command: str) -> int:
 if __name__ == "__main__":
     print("=== Демонстрація my_system() ===\n")
 
-    commands = [
-        "echo 'Hello from my_system!'",
-        "ls -la /tmp | head -5",
-        "date",
-        "uname -a",
-        "exit 42",
-    ]
+    if os.name == "nt":
+        commands = [
+            "echo Hello from my_system!",
+            "dir C:\\Windows\\Temp",
+            "date /T",
+            "ver",
+            "exit 0",
+        ]
+    else:
+        commands = [
+            "echo 'Hello from my_system!'",
+            "ls -la /tmp | head -5",
+            "date",
+            "uname -a",
+            "exit 42",
+        ]
 
     for cmd in commands:
         print(f">> my_system({cmd!r})")

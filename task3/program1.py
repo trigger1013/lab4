@@ -25,7 +25,10 @@ def main() -> None:
         a = float(sys.argv[1])
         b = float(sys.argv[2])
     except ValueError:
-        print("Помилка: a та b мають бути дійсними числами.", file=sys.stderr)
+        print(
+            "Помилка: a та b мають бути дійсними числами.",
+            file=sys.stderr,
+        )
         os._exit(1)
 
     if not (0 < a < b < 1):
@@ -47,7 +50,6 @@ def main() -> None:
     random.seed(os.getpid())
     count = sum(1 for _ in range(num) if a <= random.random() <= b)
 
-    # Код повернення обмежений 255
     exit_code = min(count, 255)
     os._exit(exit_code)
 
